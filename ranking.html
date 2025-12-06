@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Ranking de Ventas – Cotton On</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  body {
+    font-family: -apple-system, Arial;
+    margin: 0;
+    background: #f4f4f4;
+    padding: 20px;
+  }
+
+  .section {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+
+  /* HERO */
+  .hero-img {
+    position: relative;
+    width: 100%;
+    max-width: 1200px;
+    overflow: hidden;
+    border-radius: 22px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  }
+
+  .hero-img img {
+    width: 100%;
+    display: block;
+    filter: brightness(70%);
+  }
+
+  .hero-overlay {
+    position: absolute;
+    bottom: 25px;
+    left: 25px;
+    right: 25px;
+    color: white;
+    text-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  }
+
+  .hero-logo { width: 150px; margin-bottom: 15px; }
+  .hero-overlay h1 { font-size: 34px; margin: 0; }
+  .hero-overlay p { font-size: 20px; margin: 6px 0 0; }
+
+  /* PANEL GRAFICO */
+  .chart-container {
+    background: white;
+    padding: 20px;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 1200px;
+    box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+  }
+
+  canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+</style>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyitEzSJ1DWrZes3DExaiZcqR-XfvXO6EjwzpLSq3rQckfHR1DmZXX595vGpVr7etv7/exec";
+
+let chart;
+
+async function cargarDatos() {
+  const res = await fetch(API_URL + "?action=list");
+  const json = await res.json();
+
+  const data = json.data.map(d => ({
+    tienda: d.tienda,
+    meta: Number(d.meta),
+    ventas: Number(d.ventas),
+    porcentaje: Number(d.ventas) / Number(d.meta)
+  }));
+
+  /* ORDENAR POR VENTAS DESCENDENTE */
+  data.sort((a,b) => b.ventas - a.ventas);
+
+  const labels = data.map(d => d.tienda);
+  const valores = data.map(d => d.ventas);
+  const porcentajes = data.map(d => d.porcentaje);
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(document.getElementById("grafico"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Ventas USD",
+        data: valores,
+        backgroundColor: porcentajes.map(p =>
+          p >= 1 ? "rgba(0,200,0,0.7)" :
+          p >= 0.7 ? "rgba(250,180,0,0.7)" :
+                     "rgba(200,0,0,0.7)"
+        )
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const ventas = ctx.raw.toLocaleString();
+              const p = porcentajes[ctx.dataIndex];
+              const pct = (p * 100).toFixed(1) + "%";
+              return `${pct} de meta — $${ventas}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            callback: v => "$" + v.toLocaleString()
+          },
+          beginAtZero: true
+        }
+      }
+    }
+  });
+}
+
+window.onload = cargarDatos;
+setInterval(cargarDatos, 8000);
+</script>
+
+</head>
+
+<body>
+
+<!-- HERO -->
+<div class="section">
+  <div class="hero-img">
+    <img src="https://i.imgur.com/vfanebX.jpeg">
+    <div class="hero-overlay">
+      <img class="hero-logo" src="https://i.imgur.com/64IZNIF.png">
+      <h1>Cotton On – Ventas del Día</h1>
+      <p>Monitorea el desempeño en tiempo real.</p>
+    </div>
+  </div>
+</div>
+
+<!-- GRAFICO -->
+<div class="section">
+  <div class="chart-container">
+    <canvas id="grafico"></canvas>
+  </div>
+</div>
+
+</body>
+</html>
